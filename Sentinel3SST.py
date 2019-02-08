@@ -39,7 +39,7 @@ class Sentinel3SST:
     def generateTifGpt(self, i_subdataset,i_name):
         print "Extracting and geocorrecting ", i_subdataset, " band"
         nc = glob.glob(self.inFolder+"/*.nc")[0]
-        cmd = "gpt \"gptCommands\ExtractReprojectBandfromS3_SLSTR.xml\" -Pin=" + nc + " -Pband=" + i_subdataset + " -Pout=\"" + i_name
+        cmd = "gpt \"gptCommands\ExtractReprojectBandfromS3_SLSTR_UTM_WGS84.xml\" -Pin=" + nc + " -Pband=" + i_subdataset + " -Pout=\"" + i_name
         print cmd
         subprocess.call(cmd)
 

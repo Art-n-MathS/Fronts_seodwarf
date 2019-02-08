@@ -75,6 +75,8 @@ class GeoImage:
         self.image = cv2.addWeighted(self.image, 1.5, gaussian_1, -0.5, 0, self.image)
     
     def enchancementHistEqualisation(self):
+        gaussian_1 = cv2.GaussianBlur(self.image, (9,9), 10.0)
+        self.image = cv2.addWeighted(self.image, 1.5, gaussian_1, -0.5, 0, self.image)
         self.image = cv2.equalizeHist(self.image)
         
     
@@ -97,9 +99,6 @@ class GeoImage:
     #  @param[in] i_maxIter number max iterations to be done
     #  @param[in] i_e the max error to terminate the iterations
     def clusterWithKMeans(self, i_k, i_maxIter, i_e):
-        print "This method is not completed, since it is very slow and it "
-        print "does not worth the effort since the data are not in clusters."
-
         # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, i_maxIter, i_e)
         
@@ -116,11 +115,13 @@ class GeoImage:
         compactness,labels,centres = cv2.kmeans(imgTemp,i_k,criteria,i_maxIter,flags)
         print "\n\n", compactness,"\n\n",labels,"\n\n",centres, " ********************* "
         return centres.flatten()
+    
+    
         
     
     ## Method that thresholds and classifies the image
     # @param[in] i_weights an array indicating the weights of the classification e.g. [20,30,40] 
-    # @param[in] i_thresType 0 for range division and 1 for percentage of pixels
+    # @param[in] i_thresType 1 for percentage of pixels
     # 2 when the imported weights are the actual thresholds as defined during 
     # calibration
     def SeparateLowMidHigh(self,i_weights, i_thresType):
@@ -130,6 +131,7 @@ class GeoImage:
         totalWeight = np.float32(np.sum(i_weights))
         imgTemp = self.image.flatten()
         imgTemp = [x for x in imgTemp if (x is not self.noValue )]
+        imgTemp = [x for x in imgTemp if (x>0.000001)]
         noOfPixels = len(imgTemp)
         thresholds = copy.deepcopy(i_weights)
         print "weights      : " , i_weights
@@ -147,9 +149,20 @@ class GeoImage:
             
         elif (i_thresType == 1) :
             imgTemp.sort()
-            pixelsNo = np.float32(len(imgTemp))
+            pixelsNo = len(imgTemp)
+            print "++ " , pixelsNo
             for i in range (0, len(i_weights)):
-                thresholds[i] = np.float32(i_weights[i])/totalWeight*pixelsNo
+                if (i!=0):
+                    i_weights[i]=i_weights[i]+i_weights[i-1]
+                print i, "     - ", i_weights[i]
+                print i_weights 
+                index= (np.float64(i_weights[i]))/totalWeight*np.float64(pixelsNo)-1.0
+                print index, " * ", i ,":", thresholds[i], " = "
+                print np.float32(i_weights[i]), " / ", totalWeight, " * ", np.float32(pixelsNo)
+                print "\n"
+                thresholds[i] = imgTemp[int(index)]
+
+                
             for i in range (1, len(i_weights)):
                 i_weights[i]+=i_weights[i-1]
         print thresholds
@@ -162,7 +175,6 @@ class GeoImage:
             newImg[self.image<= thresholds[i]+0.000001]=i+1
         newImg[self.image<= 0.000001]=0
         self.image = copy.deepcopy(newImg)
-        
         print "Separate Low Min High"
         
     def meanShiftClustering(self):
@@ -185,7 +197,15 @@ class GeoImage:
         print("number of estimated clusters : %d" % n_clusters_)
         return cluster_centers.flatten()
         
-        
+    
+    ## Method that creates and stores the histogram of an image
+    #  @param[in] i_name the name of the image to be stored
+    def getHist(self, i_name):
+        #hist = cv2.calcHist([self.image],[0],None,[256],[0,256])
+        hist,bins = np.histogram(self.image,256,[1,256])
+        plt.hist(hist.ravel(),120,[1,256])
+        plt.savefig(i_name)
+    
     ## Method that applies the Canny Edge algorithm to the image
     #  @param[in] i_sigma    
     def CannyEdge(self,i_sigma):   
